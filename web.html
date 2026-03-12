@@ -1,0 +1,2864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraHealth | Integrated AI Healthcare</title>
+    <link rel="shortcut icon" href="fevicon.png.png" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --primary: #2D6ADE; --accent: #00D2FF; --dark: #0F172A; --light: #F8FAFC;
+            --orange: #FF6B00; --pink: #FF4B6E; --success: #10B981;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: white; color: var(--dark); overflow-x: hidden; scroll-behavior: smooth; }
+
+        
+        nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 8%; background: white; position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .logo strong { font-size: 1.5rem; letter-spacing: -1px; }
+        .logo span { color: var(--primary); }
+        .nav-links { display: flex; gap: 30px; list-style: none; font-size: 0.9rem; font-weight: 600; }
+        .nav-links li { cursor: pointer; color: #64748b; transition: 0.3s; }
+        .nav-links li:hover { color: var(--primary); }
+        .btn-nav { background: var(--pink); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .btn-nav:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            gap: 5px;
+        }
+        .hamburger span {
+            width: 25px;
+            height: 3px;
+            background: var(--dark);
+            transition: 0.3s;
+        }
+        .hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(8px, 8px); }
+        .hamburger.active span:nth-child(2) { opacity: 0; }
+        .hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(7px, -7px); }
+
+        #chatbot-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 2000;
+        }
+        #chat-button {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border: none;
+            color: white;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(45, 106, 222, 0.4);
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #chat-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 35px rgba(45, 106, 222, 0.6);
+        }
+        #chat-window {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 380px;
+            max-width: calc(100vw - 40px);
+            height: 550px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+        .chat-status {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10B981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #F8FAFC;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.bot {
+            justify-content: flex-start;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+        }
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            line-height: 1.5;
+            font-size: 0.9rem;
+        }
+        .message.bot .message-content {
+            background: white;
+            color: var(--dark);
+            border-bottom-left-radius: 4px;
+        }
+        .message.user .message-content {
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        .quick-replies {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 0 10px;
+        }
+        .quick-reply-btn {
+            background: white;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .quick-reply-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+        .chat-input-area {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #E2E8F0;
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #E2E8F0;
+            border-radius: 24px;
+            outline: none;
+            font-size: 0.9rem;
+            transition: 0.3s;
+        }
+        .chat-input:focus {
+            border-color: var(--primary);
+        }
+        .send-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .send-btn:hover {
+            background: var(--accent);
+            transform: scale(1.05);
+        }
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 16px;
+            width: fit-content;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #94A3B8;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(8px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            width: 100%;
+            max-width: 450px;
+            padding: 50px 40px;
+            border-radius: 30px;
+            position: relative;
+            margin: auto;
+        }
+        .login-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: var(--light);
+            padding: 5px;
+            border-radius: 50px;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 0.9rem;
+        }
+        .login-tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .auth-switch {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .auth-switch-btn {
+            padding: 8px 20px;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: var(--primary);
+            border-radius: 20px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 0.85rem;
+        }
+        .auth-switch-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .login-form {
+            display: none;
+        }
+        .login-form.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: 0.3s;
+            outline: none;
+        }
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--primary);
+        }
+        .close-login {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #94A3B8;
+            transition: 0.3s;
+        }
+        .close-login:hover {
+            color: var(--dark);
+        }
+
+        .video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+        }
+        .video-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            background: #1a1a1a;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        .video-main {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            position: relative;
+        }
+        .video-self {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+        }
+        .video-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-btn.mute { background: #4CAF50; }
+        .video-btn.camera { background: #2196F3; }
+        .video-btn.end { background: #f44336; }
+        .video-btn:hover { opacity: 0.8; transform: scale(1.1); }
+      
+        .portal-container { 
+            display: none; 
+            padding: 40px 8%; 
+            background: #F1F5F9; 
+            min-height: 90vh; 
+        }
+        .portal-header {
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .portal-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+        .portal-card { background: white; border-radius: 24px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .appt-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 20px; background: var(--light); border-radius: 16px; margin-bottom: 15px;
+            border-left: 5px solid var(--primary);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            border: 2px solid #E2E8F0;
+            transition: 0.3s;
+        }
+        .queue-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .queue-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+        .queue-status.waiting {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .queue-status.active {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .lab-report-item {
+            padding: 20px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--success);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .lab-report-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        #booking-toast {
+            position: fixed; bottom: 30px; right: 30px; background: var(--dark); color: white;
+            padding: 16px 30px; border-radius: 12px; display: none; z-index: 4000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); align-items: center; gap: 12px;
+        }
+
+        .hero {
+            display: flex; align-items: center; padding: 60px 8%;
+            background: linear-gradient(90deg, #E0F2FE 0%, #F8FAFC 100%);
+            min-height: 85vh; gap: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(45, 106, 222, 0.1) 0%, transparent 70%);
+            top: -200px;
+            right: -200px;
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-30px); }
+        }
+        .hero-text { flex: 1; position: relative; z-index: 1; }
+        .hero-text h1 { font-size: 4rem; font-weight: 800; line-height: 1.1; margin-bottom: 25px; }
+        .hero-text p { font-size: 1.1rem; color: #64748b; margin-bottom: 30px; line-height: 1.6; max-width: 500px; }
+        .hero-img { flex: 1; position: relative; z-index: 1; }
+        .hero-img img { width: 100%; border-radius: 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.1); }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .particle-1 {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(0, 210, 255, 0.2) 0%, transparent 70%);
+            top: 15%;
+            left: 10%;
+            animation: float 8s ease-in-out infinite;
+        }
+        .particle-2 {
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255, 75, 110, 0.15) 0%, transparent 70%);
+            bottom: 20%;
+            right: 15%;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+        
+        .features-strip {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            background: white; padding: 40px; gap: 30px;
+            margin: -60px 8% 0; position: relative; z-index: 10;
+            border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+        }
+        .feature-item { display: flex; align-items: center; gap: 15px; }
+        .icon-box { background: var(--primary); width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; font-weight: 800; }
+
+        .map-section {
+            padding: 100px 8%;
+            background: var(--light);
+        }
+        .map-section h2 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .map-section p {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 40px;
+        }
+        #map-container {
+            height: 500px;
+            width: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .map-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .map-btn {
+            background: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: 0.3s;
+        }
+        .map-btn:hover, .map-btn.active-map {
+            background: var(--primary);
+            color: white;
+        }
+        .facility-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .facility-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            border-left: 4px solid var(--primary);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .facility-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .facility-card h4 {
+            margin-bottom: 8px;
+            color: var(--dark);
+        }
+        .facility-card .facility-type {
+            color: var(--primary);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .facility-card .distance {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .about-section { padding: 100px 8%; display: flex; align-items: center; gap: 80px; }
+        .about-image { flex: 1; position: relative; }
+        .about-image img { width: 100%; border-radius: 30px; }
+        .about-badge { position: absolute; bottom: -20px; left: -20px; background: var(--dark); color: white; padding: 30px; border-radius: 20px; font-weight: 800; }
+        .about-content { flex: 1; }
+        .about-content h2 { font-size: 2.8rem; font-weight: 800; margin: 20px 0; line-height: 1.2; }
+
+        .doctors-section { padding: 80px 8%; background: white; }
+        .filter-container { max-width: 800px; margin: 40px auto; text-align: center; }
+        .search-bar { width: 100%; padding: 18px 30px; border-radius: 50px; border: 2px solid #e2e8f0; font-size: 1rem; outline: none; margin-bottom: 25px; }
+        .filter-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+        .filter-btn { padding: 10px 22px; border-radius: 50px; border: 1px solid #e2e8f0; background: white; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        .doctors-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 30px; }
+        .doctor-card { background: white; border-radius: 24px; padding: 30px; text-align: center; border: 1px solid #e2e8f0; transition: 0.3s; }
+        .doctor-card:hover { transform: translateY(-10px); border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+        .doc-img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 20px; border: 4px solid var(--light); }
+        .doc-spec { color: var(--primary); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .btn-book-small { width: 100%; margin-top: 20px; padding: 12px; border-radius: 12px; border: none; background: #f1f5f9; color: var(--dark); font-weight: 700; cursor: pointer; transition: 0.3s; }
+        .btn-book-small:hover { background: var(--primary); color: white; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(8px); }
+        .booking-modal { background: white; width: 95%; max-width: 450px; padding: 40px; border-radius: 30px; }
+        .booking-form { display: flex; flex-direction: column; gap: 15px; margin-top: 25px; }
+        .booking-form input, .booking-form select { padding: 14px; border-radius: 12px; border: 1px solid #e2e8f0; font-size: 1rem; }
+
+        footer { background: var(--dark); color: white; padding: 80px 8% 40px; }
+        .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.5fr; gap: 60px; }
+        .footer-col h4 { margin-bottom: 25px; color: white; }
+        .footer-col li { list-style: none; color: #94a3b8; margin-bottom: 12px; cursor: pointer; transition: 0.3s; }
+        .footer-col li:hover { color: white; }
+
+        @media (max-width: 1024px) {
+            .hero-text h1 { font-size: 3rem; }
+            .about-section { gap: 40px; }
+            .portal-grid { grid-template-columns: 1fr; }
+            .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+            .video-self { width: 150px; height: 112px; }
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 15px 5%; }
+            .nav-links { 
+                display: none;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                width: 100%;
+                background: white;
+                flex-direction: column;
+                padding: 20px;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+            .nav-links.active { display: flex; }
+            .hamburger { display: flex; }
+            
+            .hero { 
+                flex-direction: column; 
+                text-align: center;
+                padding: 40px 5%;
+                min-height: auto;
+            }
+            .hero-text h1 { font-size: 2.5rem; }
+            .hero-text p { margin: 0 auto 30px; }
+            
+            .features-strip { 
+                grid-template-columns: 1fr; 
+                margin: 20px 5% 0;
+                padding: 30px 20px;
+            }
+            
+            .about-section { 
+                flex-direction: column; 
+                text-align: center;
+                padding: 60px 5%;
+                gap: 40px;
+            }
+            .about-badge { 
+                position: static;
+                display: inline-block;
+                margin-top: 20px;
+            }
+            
+            .map-section { padding: 60px 5%; }
+            #map-container { height: 400px; }
+            .map-controls {
+                top: 10px;
+                right: 10px;
+            }
+            .map-btn {
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .doctors-section { padding: 60px 5%; }
+            .doctors-grid { grid-template-columns: 1fr; }
+            
+            .portal-container { padding: 20px 5%; }
+            .portal-grid { gap: 20px; }
+            .portal-card { padding: 20px; }
+            .appt-item, .queue-item {
+                flex-direction: column;
+                align-items: flex-start;
+                text-align: left;
+            }
+            
+            #chatbot-container {
+                bottom: 20px;
+                right: 20px;
+            }
+            #chat-button {
+                width: 55px;
+                height: 55px;
+                font-size: 1.5rem;
+            }
+            #chat-window {
+                width: calc(100vw - 40px);
+                height: 500px;
+                bottom: 85px;
+            }
+            
+            .booking-modal, .login-container { 
+                width: 90%;
+                padding: 30px 20px;
+            }
+            .login-tab {
+                font-size: 0.8rem;
+                padding: 10px;
+            }
+            
+            #booking-toast {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+                padding: 12px 20px;
+            }
+
+            .video-container {
+                width: 95%;
+                height: 70vh;
+            }
+            .video-self {
+                width: 100px;
+                height: 75px;
+                top: 10px;
+                right: 10px;
+            }
+            .video-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+            
+            footer { padding: 60px 5% 30px; }
+            .footer-grid { grid-template-columns: 1fr; gap: 40px; }
+        }
+
+        @media (max-width: 480px) {
+            .hero-text h1 { font-size: 2rem; }
+            .about-content h2 { font-size: 2rem; }
+            .map-section h2 { font-size: 2rem; }
+            .facility-list { grid-template-columns: 1fr; }
+            .login-container { padding: 40px 20px; }
+            .portal-header { flex-direction: column; align-items: flex-start; }
+        }
+
+        .gm-style .gm-style-iw-c {
+            border-radius: 12px;
+            padding: 10px;
+        }
+        .gm-style .gm-style-iw-d {
+            overflow: auto !important;
+        }
+        .facility-popup h4 {
+            margin-bottom: 5px;
+            color: var(--dark);
+        }
+        .facility-popup .type {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .about-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .about-modal-content {
+            background: white;
+            width: 100%;
+            max-width: 900px;
+            border-radius: 30px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .about-modal-header {
+            position: relative;
+            height: 300px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 30px 30px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .about-modal-header img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.3;
+        }
+        .about-modal-header h2 {
+            position: absolute;
+            color: white;
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            z-index: 1;
+        }
+        .about-modal-body {
+            padding: 50px;
+        }
+        .about-section-modal {
+            margin-bottom: 40px;
+        }
+        .about-section-modal h3 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+        .about-section-modal p {
+            color: #64748b;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            margin-bottom: 15px;
+        }
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+            margin-top: 30px;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--primary), var(--accent));
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+            padding-left: 30px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -33px;
+            top: 5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 4px solid white;
+            box-shadow: 0 0 0 3px var(--primary);
+        }
+        .timeline-year {
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 30px;
+            background: var(--light);
+            border-radius: 20px;
+            transition: 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .stat-label {
+            color: #64748b;
+            font-weight: 600;
+        }
+        .close-about-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 2rem;
+            cursor: pointer;
+            color: var(--dark);
+            transition: 0.3s;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-about-modal:hover {
+            background: var(--light);
+            transform: rotate(90deg);
+        }
+
+        @media (max-width: 768px) {
+            .about-modal-body {
+                padding: 30px 20px;
+            }
+            .about-modal-header h2 {
+                font-size: 2rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .timeline {
+                padding-left: 30px;
+            }
+        }
+        .hero::before {
+    z-index: 0;
+}
+
+.hero-text {
+    position: relative;
+    z-index: 2;
+}
+
+:root.dark .hero {
+    background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+    </style>
+</head>
+<body>
+
+<!-- ══ LOADING SCREEN ══ -->
+<div id="aura-loading" style="
+    position:fixed;inset:0;z-index:99999;
+    background:#0F172A;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    transition:opacity 0.7s ease, visibility 0.7s ease;
+">
+    <div style="text-align:center;padding:0 20px;">
+        <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:2.8rem;font-weight:800;color:white;letter-spacing:-1.5px;margin-bottom:6px;">
+            Aura<span style="color:#2D6ADE;">Health</span>
+        </div>
+        <div style="color:#64748b;font-size:0.9rem;margin-bottom:48px;letter-spacing:0.5px;">Integrated AI Healthcare Platform</div>
+        <div style="width:260px;height:4px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;margin:0 auto 14px;">
+            <div id="aura-loader-bar" style="height:100%;width:0;background:linear-gradient(90deg,#2D6ADE,#00D2FF);border-radius:99px;transition:width 0.3s ease;"></div>
+        </div>
+        <div id="aura-loader-status" style="color:#475569;font-size:0.78rem;height:18px;transition:opacity 0.3s;">Initializing systems...</div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:24px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#2D6ADE;display:inline-block;animation:auraDot 1.4s ease infinite;"></span>
+            <span style="width:7px;height:7px;border-radius:50%;background:#2D6ADE;display:inline-block;animation:auraDot 1.4s ease infinite;animation-delay:0.2s;"></span>
+            <span style="width:7px;height:7px;border-radius:50%;background:#2D6ADE;display:inline-block;animation:auraDot 1.4s ease infinite;animation-delay:0.4s;"></span>
+        </div>
+    </div>
+</div>
+<style>
+@keyframes auraDot { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+</style>
+<script>
+(function(){
+    var bar = document.getElementById('aura-loader-bar');
+    var screen = document.getElementById('aura-loading');
+    var statusEl = document.getElementById('aura-loader-status');
+    var steps = [
+        { pct: 15, msg: 'Loading medical database...' },
+        { pct: 32, msg: 'Connecting AI engine...' },
+        { pct: 50, msg: 'Fetching specialist profiles...' },
+        { pct: 68, msg: 'Initializing secure portal...' },
+        { pct: 82, msg: 'Setting up map services...' },
+        { pct: 94, msg: 'Almost ready...' },
+        { pct: 100, msg: 'Welcome to AuraHealth!' }
+    ];
+    var stepIndex = 0;
+    var totalDuration = 3800; // ~4 seconds total
+    var stepInterval = totalDuration / steps.length;
+
+    function runStep() {
+        if (stepIndex >= steps.length) return;
+        var step = steps[stepIndex];
+        bar.style.width = step.pct + '%';
+        statusEl.textContent = step.msg;
+        stepIndex++;
+        if (stepIndex < steps.length) {
+            setTimeout(runStep, stepInterval);
+        } else {
+            // Done - hide after a short pause
+            setTimeout(function(){
+                screen.style.opacity = '0';
+                screen.style.visibility = 'hidden';
+                setTimeout(function(){ screen.style.display = 'none'; }, 700);
+            }, 500);
+        }
+    }
+
+    // Start after a tiny delay so DOM is ready
+    setTimeout(runStep, 200);
+})();
+</script>
+
+<div id="chatbot-container">
+    <button id="chat-button">💬</button>
+    <div id="chat-window">
+        <div class="chat-header">
+            <div>
+                <h3>AuraHealth Assistant</h3>
+                <div class="chat-status">
+                    <span class="status-dot"></span>
+                    Online
+                </div>
+            </div>
+            <button onclick="toggleChat()" style="background:none; border:none; color:white; font-size:1.8rem; cursor:pointer;">&times;</button>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot">
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    Hi! I'm your AuraHealth AI Assistant. How can I help you today?
+                </div>
+            </div>
+            <div class="quick-replies">
+                <button class="quick-reply-btn" onclick="sendQuickReply('Book appointment')">📅 Book Appointment</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('Find doctors')">👨‍⚕️ Find Doctors</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('Health tips')">💡 Health Tips</button>
+                <button class="quick-reply-btn" onclick="sendQuickReply('Emergency')">🚨 Emergency</button>
+            </div>
+        </div>
+        <div class="typing-indicator" id="typing-indicator">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" class="chat-input" placeholder="Type your message...">
+            <button class="send-btn" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+</div>
+
+<div class="video-modal" id="video-modal">
+    <div class="video-container">
+        <div class="video-main" id="video-main-area">
+            <div style="text-align: center;" id="remote-placeholder">
+                <div style="font-size: 4rem; margin-bottom: 20px;">👨‍⚕️</div>
+                <div id="call-participant-name">Dr. Sarah Chen</div>
+                <div style="font-size: 1rem; opacity: 0.7; margin-top: 10px;">Connected</div>
+            </div>
+            <div class="video-self" id="video-self-container">
+                <video id="local-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;border-radius:12px;display:none;"></video>
+                <div id="video-self-placeholder" style="text-align:center;">
+                    <div style="font-size: 2rem;">😊</div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">You</div>
+                </div>
+            </div>
+        </div>
+        <div class="video-controls">
+            <button class="video-btn mute" id="btn-mute" onclick="toggleMic()" title="Mute/Unmute">🎤</button>
+            <button class="video-btn camera" id="btn-camera" onclick="toggleCamera()" title="Camera On/Off">📹</button>
+            <button class="video-btn end" onclick="endCall()" title="End Call">📞</button>
+        </div>
+    </div>
+</div>
+
+<div class="login-modal" id="login-modal">
+    <div class="login-container">
+        <button class="close-login" onclick="closeLogin()">&times;</button>
+        <h2 style="text-align: center; margin-bottom: 20px; font-size: 2rem;">Welcome to AuraHealth</h2>
+        
+        <div class="auth-switch">
+            <button class="auth-switch-btn active" onclick="switchAuthMode('login',event)">Login</button>
+            <button class="auth-switch-btn" onclick="switchAuthMode('signup',event)">Sign Up</button>
+        </div>
+
+        <div id="login-section">
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="switchTab('patient')">Patient</button>
+                <button class="login-tab" onclick="switchTab('doctor')">Doctor</button>
+            </div>
+
+            <form class="login-form active" id="patient-login">
+                <div class="form-group">
+                    <label>Email or Patient ID</label>
+                    <input type="text" placeholder="Enter your email or patient ID" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="Enter your password" required>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.85rem; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox"> Remember me
+                    </label>
+                    <a href="#" style="color: var(--primary); text-decoration: none;">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn-nav" style="width: 100%; padding: 15px; font-size: 1rem;" onclick="loginAsPatient(event)">Login as Patient</button>
+            </form>
+
+            <form class="login-form" id="doctor-login">
+                <div class="form-group">
+                    <label>Medical License Number</label>
+                    <input type="text" placeholder="Enter your license number" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="Enter your password" required>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 0.85rem; flex-wrap: wrap; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox"> Remember me
+                    </label>
+                    <a href="#" style="color: var(--primary); text-decoration: none;">Forgot password?</a>
+                </div>
+                <button type="submit" class="btn-nav" style="width: 100%; padding: 15px; font-size: 1rem; background: var(--success);" onclick="loginAsDoctor(event)">Login as Doctor</button>
+            </form>
+        </div>
+
+        <div id="signup-section" style="display: none;">
+            <div class="login-tabs">
+                <button class="login-tab active" onclick="switchSignupTab('patient')">Patient</button>
+                <button class="login-tab" onclick="switchSignupTab('doctor')">Doctor</button>
+            </div>
+
+            <form class="login-form active" id="patient-signup">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" placeholder="Enter your phone number" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="Create a password" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" placeholder="Confirm your password" required>
+                </div>
+                <button type="submit" class="btn-nav" style="width: 100%; padding: 15px; font-size: 1rem;" onclick="signupAsPatient(event)">Create Patient Account</button>
+            </form>
+
+            <form class="login-form" id="doctor-signup">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" placeholder="Dr. Your Name" required>
+                </div>
+                <div class="form-group">
+                    <label>Medical License Number</label>
+                    <input type="text" placeholder="Enter your license number" required>
+                </div>
+                <div class="form-group">
+                    <label>Specialization</label>
+                    <select required>
+                        <option value="">Select your specialization</option>
+                        <option>Cardiology</option>
+                        <option>Neurology</option>
+                        <option>Pediatrics</option>
+                        <option>Dermatology</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" placeholder="Create a password" required>
+                </div>
+                <button type="submit" class="btn-nav" style="width: 100%; padding: 15px; font-size: 1rem; background: var(--success);" onclick="signupAsDoctor(event)">Create Doctor Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="booking-toast">
+    <span style="color:var(--success); font-size:1.5rem;">✔</span>
+    <div>
+        <strong style="display:block">Success!</strong>
+        <small style="opacity:0.8" id="toast-message">Operation completed.</small>
+    </div>
+</div>
+
+<nav>
+    <div class="logo" style="display: flex; align-items: center; gap: 10px;">
+    <img src="logo.png" alt="AuraHealth Logo" style="height: 60px; width: auto; border-radius: 5px;">
+    <strong style="font-size: 1.5rem; letter-spacing: -1px;">Aura<span style="color: var(--primary);">Health</span></strong>
+</div>
+    <ul class="nav-links" id="nav-links">
+        <li onclick="scrollToSection('main-content')">Home</li>
+        <li onclick="scrollToSection('map-section')">Find Care</li>
+        <li onclick="scrollToSection('about-us')">About</li>
+        <li onclick="scrollToSection('doctors-section')">Doctors</li>
+    </ul>
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <button class="btn-nav" id="portal-btn">Portal</button>
+        <button class="btn-nav" id="logout-btn" style="display: none; background: var(--orange);" onclick="logout()">Logout</button>
+        <div class="hamburger" id="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</nav>
+
+<div id="main-content">
+    <section class="hero">
+        <div class="particle particle-1"></div>
+        <div class="particle particle-2"></div>
+        <div class="hero-text">
+            <h1>Your Health is <br><span style="color: var(--primary)">Our Priority.</span></h1>
+            <p>Moving from reactive care to proactive, data-driven wellness. Experience the future of integrated clinical intelligence.</p>
+            <button class="btn-nav" onclick="scrollToSection('map-section')" style="padding: 18px 40px; font-size: 1rem;">Let's Explore</button>
+        </div>
+        <div class="hero-img">
+            <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=800&q=80" alt="Doctor Team">
+        </div>
+    </section>
+
+    <div class="features-strip">
+        <div class="feature-item">
+            <div class="icon-box">AI</div>
+            <div><strong>AI Assistant</strong><p style="font-size:0.8rem; color:#64748b">24/7 intelligent support</p></div>
+        </div>
+        <div class="feature-item">
+            <div class="icon-box">24</div>
+            <div><strong>24/7 Care</strong><p style="font-size:0.8rem; color:#64748b">Virtual consults anytime</p></div>
+        </div>
+        <div class="feature-item">
+            <div class="icon-box">DP</div>
+            <div><strong>Digital Rx</strong><p style="font-size:0.8rem; color:#64748b">Instant prescriptions</p></div>
+        </div>
+    </div>
+
+    <section class="map-section" id="map-section">
+        <h2>Find <span style="color:var(--primary)">Care Nearby</span></h2>
+        <p>Locate healthcare facilities, hospitals, and clinics in real-time</p>
+        <div style="position: relative;">
+            <div id="map-container"></div>
+            <div class="map-controls">
+                <button class="map-btn" onclick="findMyLocation()">📍 My Location</button>
+               <button class="map-btn" onclick="filterFacilities('hospital', event)">🏥 Hospitals</button>
+<button class="map-btn" onclick="filterFacilities('clinic', event)">🏪 Clinics</button>
+<button class="map-btn active-map" onclick="filterFacilities('all', event)">All</button>
+
+            </div>
+        </div>
+        <div class="facility-list" id="facility-list"></div>
+    </section>
+
+    <section class="about-section" id="about-us">
+        <div class="about-image">
+            <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80" alt="Medical Technology">
+            <div class="about-badge">AuraHealth with<br>AI Innovation</div>
+        </div>
+        <div class="about-content">
+            <span style="color:var(--pink); font-weight:800; text-transform:uppercase; font-size:0.8rem">Our Story</span>
+            <h2>Bridging Science & <span style="color:var(--primary)">Compassion.</span></h2>
+            <p style="color:#64748b; line-height:1.8; margin-bottom:20px">AuraHealth was built on a single premise: healthcare should be as mobile and intelligent as the people it serves. We've combined human clinical expertise with advanced neural networks to provide predictive care that saves lives.</p>
+            <button class="btn-nav" style="background:var(--dark)" onclick="openAboutModal()">Read More</button>
+        </div>
+    </section>
+
+    <section class="doctors-section" id="doctors-section">
+        <div class="section-header" style="text-align: center; margin-bottom: 20px;">
+            <h2 style="font-size:2.5rem">Our Expert <span style="color:var(--primary)">Specialists</span></h2>
+            <p style="color:#64748b">World-class clinical care at your fingertips.</p>
+        </div>
+
+        <div class="filter-container">
+            <input type="text" id="doc-search" class="search-bar" placeholder="Search by doctor name...">
+            <div class="filter-btns">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="Cardiology">Cardiology</button>
+                <button class="filter-btn" data-filter="Neurology">Neurology</button>
+                <button class="filter-btn" data-filter="Pediatrics">Pediatrics</button>
+                <button class="filter-btn" data-filter="Dermatology">Dermatology</button>
+            </div>
+        </div>
+
+        <div class="doctors-grid" id="doctors-container"></div>
+    </section>
+</div>
+
+<div id="patient-portal" class="portal-container">
+    <div class="portal-header">
+        <div>
+            <h2 style="font-size: 2.5rem; font-weight: 800;">Patient <span style="color:var(--primary)">Dashboard</span></h2>
+            <p style="color:#64748b">Welcome back, <span id="user-name">Alex</span>. Here are your medical updates.</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-nav" style="background:var(--primary);" onclick="goToDoctorSelection()">+ Book Appointment</button>
+            <button class="filter-btn" onclick="togglePortal()">← Back to Home</button>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:30px;">
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--primary)" id="stat-appt-count">0</div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">Total Appointments</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--success)">92%</div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">Health Score</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--orange)" id="stat-labs-count">0</div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">Lab Reports</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--pink)">✓</div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:4px;">All Vitals Normal</div>
+        </div>
+    </div>
+
+    <div class="portal-grid">
+        <!-- Appointments -->
+        <div class="portal-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:10px;">
+                <h3>📅 My Appointments</h3>
+                <div style="display:flex;gap:8px;">
+                    <button class="filter-btn active" onclick="filterAppts(this,'all')">All</button>
+                    <button class="filter-btn" onclick="filterAppts(this,'upcoming')">Upcoming</button>
+                    <button class="filter-btn" onclick="filterAppts(this,'past')">Past</button>
+                </div>
+            </div>
+            <div id="portal-appointment-list">
+                <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <div style="font-size:3rem;margin-bottom:10px;">📋</div>
+                    <p>No appointments booked yet.</p>
+                    <p style="font-size:0.85rem;margin-top:5px;">Visit the Doctors section to schedule one.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Health Score Card -->
+            <div class="portal-card" style="background: var(--dark); color: white;">
+                <h4 style="color: var(--accent); margin-bottom: 15px;">🩺 Health Overview</h4>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:15px;">
+                    <div style="background:rgba(255,255,255,0.07);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:800;color:#10B981;">120/80</div>
+                        <div style="font-size:0.72rem;opacity:0.6;margin-top:3px;">Blood Pressure</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.07);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:800;color:#00D2FF;">72 bpm</div>
+                        <div style="font-size:0.72rem;opacity:0.6;margin-top:3px;">Heart Rate</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.07);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:800;color:#FF6B00;">98.4°F</div>
+                        <div style="font-size:0.72rem;opacity:0.6;margin-top:3px;">Temperature</div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.07);border-radius:12px;padding:12px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:800;color:#FF4B6E;">99%</div>
+                        <div style="font-size:0.72rem;opacity:0.6;margin-top:3px;">SpO₂</div>
+                    </div>
+                </div>
+                <div style="font-size:0.82rem;opacity:0.55;text-align:center;">Last updated: Today, 08:30 AM</div>
+            </div>
+
+            <!-- AI Quick Actions -->
+            <div class="portal-card">
+                <h4 style="margin-bottom: 15px;">⚡ Quick Actions</h4>
+                <button class="btn-nav" style="width:100%;background:var(--light);color:var(--dark);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="toggleChat()">🤖 Chat with AI Assistant</button>
+                <button class="btn-nav" style="width:100%;background:var(--primary);display:flex;align-items:center;justify-content:center;gap:8px;" onclick="goToDoctorSelection()">📅 Book Appointment</button>
+            </div>
+
+            <!-- Upcoming Reminder -->
+            <div class="portal-card" style="border-left:4px solid var(--primary);">
+                <h4 style="margin-bottom:12px;">🔔 Reminders</h4>
+                <div style="font-size:0.85rem;color:#64748b;line-height:1.7;">
+                    <p>• Take prescribed medication at <strong>8 PM</strong></p>
+                    <p>• Annual health check due this month</p>
+                    <p>• Stay hydrated — 8 glasses/day</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Reports -->
+    <div class="portal-card" style="margin-top: 30px;">
+        <h3 style="margin-bottom: 25px;">🔬 Lab Reports</h3>
+        <div id="patient-lab-reports">
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <div style="font-size:3rem;margin-bottom:10px;">🧪</div>
+                <p>No lab reports available yet.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="doctor-portal" class="portal-container">
+    <div class="portal-header">
+        <div>
+            <h2 style="font-size: 2.5rem; font-weight: 800;">Doctor <span style="color:var(--primary)">Dashboard</span></h2>
+            <p style="color:#64748b">Welcome, <span id="doctor-name">Dr. Sarah Chen</span> &nbsp;|&nbsp; <span style="color:var(--success);font-weight:700;">● Online</span></p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <span id="live-clock" style="font-size:0.9rem;color:#64748b;font-weight:600;"></span>
+            <button class="filter-btn" onclick="togglePortal()">← Back to Home</button>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-bottom:30px;">
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--primary)">12</div>
+            <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">Total Appointments</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--orange)">3</div>
+            <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">Pending</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--success)">8</div>
+            <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">Completed Today</div>
+        </div>
+        <div class="portal-card" style="padding:20px;text-align:center;">
+            <div style="font-size:2rem;font-weight:800;color:var(--pink)" id="doc-lab-count">0</div>
+            <div style="font-size:0.78rem;color:#64748b;margin-top:4px;">Reports Submitted</div>
+        </div>
+    </div>
+
+    <div class="portal-grid">
+        <!-- Patient Queue -->
+        <div class="portal-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:10px;">
+                <h3>👥 Patient Queue</h3>
+                <span style="background:#D1FAE5;color:#065F46;padding:5px 12px;border-radius:20px;font-size:0.78rem;font-weight:700;">3 Waiting</span>
+            </div>
+            <div id="patient-queue">
+                <div class="queue-item" id="queue-alex">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.1rem;">A</div>
+                        <div>
+                            <h4 style="margin-bottom: 3px;">Alex Johnson</h4>
+                            <p style="font-size: 0.82rem; color: #64748b;">Annual Check-up • 09:00 AM</p>
+                            <p style="font-size:0.75rem;color:#94a3b8;">Last visit: 6 months ago</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span class="queue-status active">Active</span>
+                        <button class="btn-nav" style="padding: 8px 14px; font-size: 0.82rem;" onclick="startVideoCall('Alex Johnson')">📹 Start Call</button>
+                    </div>
+                </div>
+                <div class="queue-item" id="queue-maria">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--pink),var(--orange));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.1rem;">M</div>
+                        <div>
+                            <h4 style="margin-bottom: 3px;">Maria Garcia</h4>
+                            <p style="font-size: 0.82rem; color: #64748b;">Follow-up Consultation • 09:30 AM</p>
+                            <p style="font-size:0.75rem;color:#94a3b8;">Diabetic follow-up</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span class="queue-status waiting">Waiting</span>
+                        <button class="btn-nav" style="padding: 8px 14px; font-size: 0.82rem;" onclick="startVideoCall('Maria Garcia')">📹 Start Call</button>
+                    </div>
+                </div>
+                <div class="queue-item" id="queue-robert">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--success),var(--accent));border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:1.1rem;">R</div>
+                        <div>
+                            <h4 style="margin-bottom: 3px;">Robert Chen</h4>
+                            <p style="font-size: 0.82rem; color: #64748b;">Lab Results Review • 10:00 AM</p>
+                            <p style="font-size:0.75rem;color:#94a3b8;">Blood panel review</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span class="queue-status waiting">Waiting</span>
+                        <button class="btn-nav" style="padding: 8px 14px; font-size: 0.82rem;" onclick="startVideoCall('Robert Chen')">📹 Start Call</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submitted Lab Reports appear here -->
+            <div id="doc-submitted-reports-section" style="display:none;margin-top:24px;">
+                <h4 style="margin-bottom:15px;color:#475569;">📋 Submitted Reports</h4>
+                <div id="doc-submitted-reports"></div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- Schedule -->
+            <div class="portal-card" style="background:linear-gradient(135deg,var(--primary),var(--accent));color:white;">
+                <h4 style="margin-bottom:15px;">📆 Today's Schedule</h4>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="background:rgba(255,255,255,0.15);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;">Alex Johnson</span>
+                        <span style="font-size:0.78rem;background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:99px;">09:00 AM</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.15);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;">Maria Garcia</span>
+                        <span style="font-size:0.78rem;background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:99px;">09:30 AM</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.15);border-radius:12px;padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-size:0.85rem;">Robert Chen</span>
+                        <span style="font-size:0.78rem;background:rgba(255,255,255,0.25);padding:3px 10px;border-radius:99px;">10:00 AM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Lab Report -->
+            <div class="portal-card">
+                <h4 style="margin-bottom: 15px;">📝 Submit Lab Report</h4>
+                <form id="lab-report-form" onsubmit="submitLabReport(event)">
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem;">Patient Name</label>
+                        <input type="text" id="report-patient-name" placeholder="Enter patient name" required style="padding: 10px; font-size: 0.9rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem;">Report Type</label>
+                        <select id="report-type" required style="padding: 10px; font-size: 0.9rem;">
+                            <option value="">Select type</option>
+                            <option>Blood Test</option>
+                            <option>X-Ray</option>
+                            <option>MRI Scan</option>
+                            <option>ECG</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.85rem;">Report Summary</label>
+                        <textarea id="report-summary" rows="3" placeholder="Enter key findings..." required style="width: 100%; padding: 10px; border: 2px solid #E2E8F0; border-radius: 12px; font-size: 0.9rem; resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                    <button type="submit" class="btn-nav" style="width: 100%; padding: 12px; font-size: 0.9rem; background: var(--success);">Submit Report</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+    <div class="booking-modal">
+        <h3 id="modal-doc-name" style="font-size:1.5rem">Book Appointment</h3>
+        <p id="modal-doc-spec" style="color:var(--primary); font-weight:700"></p>
+        <form class="booking-form" id="booking-form">
+            <input type="text" id="patient-name" placeholder="Your Full Name" required>
+            <input type="email" placeholder="Email Address" required>
+            <input type="date" id="booking-date" required>
+            <select id="booking-slot" required>
+                <option value="">Select Time Slot</option>
+                <option>Morning (09:00 - 12:00)</option>
+                <option>Afternoon (14:00 - 17:00)</option>
+            </select>
+            <button type="submit" class="btn-nav" style="width:100%; padding:15px">Confirm Booking</button>
+            <button type="button" onclick="closeModal()" style="background:none; border:none; color:#64748b; margin-top:10px; cursor:pointer">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<div class="about-modal" id="about-modal">
+    <div class="about-modal-content">
+        <div class="about-modal-header">
+            <img src="logo.png" alt="Healthcare Innovation">
+            <h2>Our Story</h2>
+            <button class="close-about-modal" onclick="closeAboutModal()">&times;</button>
+        </div>
+        <div class="about-modal-body">
+            <div class="about-section-modal">
+                <h3>The Beginning</h3>
+                <p>It is a group of visionary healthcare professionals and AI researchers came together with a simple question: <strong>What if healthcare could predict and prevent illness before it happens?</strong></p>
+                <p>Healthcare is often reactive—patients wait, systems strain, and critical decisions come too late. We asked: What if healthcare could respond intelligently, in real time?
+
+AuraHealth bridges AI and clinical care through smart triage, symptom analysis, digital consultations, and seamless scheduling—reducing delays and improving access to care. Built to scale across hospitals, clinics, and communities, AuraHealth supports faster decisions and better outcomes.
+
+Developed by Team Algorithm Architect
+<p><strong>Team Members:
+• Jitesh Mohanty (Team Leader)
+• Abhishek Mallick
+• Janmejay Sahoo
+• Sahil Saha
+• Subhrajyoyi Maharana
+</strong></p>
+
+
+
+We’re not just building a platform—we’re shaping the future of intelligent healthcare..</p>
+            </div>
+
+            <div class="about-section-modal">
+                <h3>Our Mission</h3>
+                <p>We believe healthcare should be as intelligent and mobile as the people it serves. By combining human clinical expertise with advanced neural networks and machine learning, we're creating a new paradigm of predictive, personalized healthcare.</p>
+                <p>Our mission is simple: <strong>Empower every individual with AI-driven insights that transform healthcare from reactive to proactive.</strong></p>
+            </div>
+
+
+
+            <div class="about-section-modal">
+                <h3>Our Values</h3>
+                <p><strong>🎯 Patient-First:</strong> Every decision we make puts patient wellbeing at the center.</p>
+                <p><strong>🔬 Innovation:</strong> We constantly push the boundaries of what's possible in healthcare technology.</p>
+                <p><strong>🤝 Accessibility:</strong> Quality healthcare should be available to everyone, everywhere.</p>
+                <p><strong>🔒 Privacy:</strong> Your health data is sacred. We employ military-grade encryption and never sell your information.</p>
+                <p><strong>🌍 Sustainability:</strong> We're committed to reducing healthcare's environmental footprint through digital-first solutions.</p>
+            </div>
+
+            <div class="about-section-modal">
+                <h3>Looking Forward</h3>
+                <p>We're just getting started. Our roadmap includes groundbreaking initiatives in genomic medicine, quantum computing for drug discovery, and AI-powered surgical assistance.</p>
+                <p>Join us as we build the future of healthcare—one where technology and compassion work hand in hand to save lives and improve outcomes for all.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-grid">
+        <div class="footer-col">
+            <div style="margin-bottom: 20px;">
+    <img src="logo.png" alt="AuraHealth Logo" style="height: 60px; border-radius: 55%;">
+</div>
+            <p style="color:#94a3b8; font-size:0.9rem; margin-top:15px">Empowering humanity through proactive, AI-driven clinical intelligence.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+                <li onclick="showToast('About Us - Coming Soon')">About Us</li>
+                <li onclick="showToast('Careers - Coming Soon')">Careers</li>
+                <li onclick="showToast('Privacy Policy - Coming Soon')">Privacy</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Support</h4>
+            <ul>
+                <li onclick="showToast('Help Center - Coming Soon')">Help Center</li>
+                <li onclick="showToast('Contact Support - Coming Soon')">Contact</li>
+                <li onclick="showToast('Terms of Service - Coming Soon')">Terms</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Newsletter</h4>
+            <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+                <input type="email" id="newsletter-email" placeholder="Your email" style="background:#1E293B; border:none; padding:10px; border-radius:5px; color:white; flex:1; min-width:150px;">
+                <button onclick="subscribeNewsletter()" style="background:var(--orange); border:none; padding:10px 20px; border-radius:5px; color:white; cursor:pointer; font-weight:700;">Subscribe</button>
+            </div>
+        </div>
+    </div>
+    <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #1E293B; color: #64748b;">
+        <p>&copy; 2026 AuraHealth. All rights reserved.</p>
+    </div>
+</footer>
+
+<script>
+    
+    gsap.registerPlugin(ScrollTrigger);
+
+    window.addEventListener('load', () => {
+       
+        gsap.from(".hero-text h1", { 
+            opacity: 0, 
+            y: 100, 
+            duration: 1.2,
+            ease: "power4.out"
+        });
+        
+        gsap.from(".hero-text p", { 
+            opacity: 0, 
+            y: 50, 
+            duration: 1,
+            delay: 0.3,
+            ease: "power3.out"
+        });
+        
+       gsap.fromTo(
+    ".hero-text .btn-nav",
+    { opacity: 0, scale: 0.8 },
+    { opacity: 1, scale: 1, duration: 0.8, delay: 0.6, ease: "back.out(1.7)" }
+);
+
+        
+        gsap.from(".hero-img", { 
+            opacity: 0, 
+            x: 100,
+            scale: 0.9,
+            duration: 1.2,
+            delay: 0.4,
+            ease: "power4.out"
+        });
+
+        gsap.to(".particle-1", {
+            y: -20,
+            x: 20,
+            duration: 4,
+            repeat: -1,
+            yoyo: true,
+            ease: "power1.inOut"
+        });
+
+        gsap.to(".particle-2", {
+            y: 20,
+            x: -20,
+            duration: 5,
+            repeat: -1,
+            yoyo: true,
+            ease: "power1.inOut"
+        });
+
+        gsap.from(".features-strip .feature-item", {
+            scrollTrigger: {
+                trigger: ".features-strip",
+                start: "top 80%"
+            },
+            opacity: 0,
+            y: 50,
+            stagger: 0.2,
+            duration: 0.8,
+            ease: "power3.out"
+        });
+
+        gsap.from(".icon-box", {
+            scrollTrigger: {
+                trigger: ".features-strip",
+                start: "top 80%"
+            },
+            rotation: -180,
+            stagger: 0.2,
+            duration: 1,
+            ease: "back.out(1.7)"
+        });
+
+        gsap.from(".about-image", {
+            scrollTrigger: {
+                trigger: ".about-section",
+                start: "top 70%"
+            },
+            opacity: 0,
+            x: -100,
+            duration: 1,
+            ease: "power3.out"
+        });
+
+        gsap.from(".about-badge", {
+            scrollTrigger: {
+                trigger: ".about-section",
+                start: "top 70%"
+            },
+            opacity: 0,
+            scale: 0.5,
+            duration: 0.8,
+            delay: 0.5,
+            ease: "back.out(2)"
+        });
+
+        gsap.from(".about-content", {
+            scrollTrigger: {
+                trigger: ".about-section",
+                start: "top 70%"
+            },
+            opacity: 0,
+            x: 100,
+            duration: 1,
+            ease: "power3.out"
+        });
+
+        gsap.from(".map-section h2", {
+            scrollTrigger: {
+                trigger: ".map-section",
+                start: "top 70%"
+            },
+            opacity: 0,
+            y: 50,
+            duration: 0.8
+        });
+
+        gsap.from("#map-container", {
+            scrollTrigger: {
+                trigger: ".map-section",
+                start: "top 60%"
+            },
+            opacity: 0,
+            scale: 0.95,
+            duration: 1,
+            ease: "power2.out"
+        });
+
+        gsap.from(".map-controls .map-btn", {
+            scrollTrigger: {
+                trigger: ".map-section",
+                start: "top 60%"
+            },
+            opacity: 0,
+            x: 50,
+            stagger: 0.1,
+            duration: 0.6,
+            delay: 0.5
+        });
+
+        // Doctor cards animated via renderDoctors() instead of ScrollTrigger
+        // to avoid newly rendered cards being left at opacity:0
+
+        gsap.from(".facility-card", { 
+            scrollTrigger: {
+                trigger: ".facility-list",
+                start: "top 80%"
+            },
+            opacity: 0, 
+            y: 30,
+            stagger: 0.1,
+            duration: 0.5
+        });
+
+        gsap.from(".footer-col", {
+            scrollTrigger: {
+                trigger: "footer",
+                start: "top 80%"
+            },
+            opacity: 0,
+            y: 30,
+            stagger: 0.15,
+            duration: 0.6
+        });
+    });
+    document.addEventListener('DOMContentLoaded', () => {
+        const buttons = document.querySelectorAll('.btn-nav, .btn-book-small, .filter-btn, .map-btn');
+        buttons.forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                gsap.to(this, { scale: 1.05, duration: 0.3, ease: "power2.out" });
+            });
+            btn.addEventListener('mouseleave', function() {
+                gsap.to(this, { scale: 1, duration: 0.3, ease: "power2.out" });
+            });
+        });
+
+        const doctorCards = document.querySelectorAll('.doctor-card');
+        doctorCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                gsap.to(this.querySelector('.doc-img'), { 
+                    scale: 1.1, 
+                    rotation: 5,
+                    duration: 0.3 
+                });
+            });
+            card.addEventListener('mouseleave', function() {
+                gsap.to(this.querySelector('.doc-img'), { 
+                    scale: 1, 
+                    rotation: 0,
+                    duration: 0.3 
+                });
+            });
+        });
+
+        const facilityCards = document.querySelectorAll('.facility-card');
+        facilityCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                gsap.to(this, { 
+                    x: 10,
+                    boxShadow: "0 15px 30px rgba(0,0,0,0.15)",
+                    duration: 0.3 
+                });
+            });
+            card.addEventListener('mouseleave', function() {
+                gsap.to(this, { 
+                    x: 0,
+                    boxShadow: "0 0 0 rgba(0,0,0,0)",
+                    duration: 0.3 
+                });
+            });
+        });
+    });
+
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('nav-links');
+    
+    hamburger.addEventListener('click', () => {
+        hamburger.classList.toggle('active');
+        navLinks.classList.toggle('active');
+    });
+
+    document.querySelectorAll('.nav-links li').forEach(link => {
+        link.addEventListener('click', () => {
+            hamburger.classList.remove('active');
+            navLinks.classList.remove('active');
+        });
+    });
+
+    function scrollToSection(id) {
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    function subscribeNewsletter() {
+        const email = document.getElementById('newsletter-email').value;
+        if (email && email.includes('@')) {
+            showToast('Successfully subscribed to newsletter!');
+            document.getElementById('newsletter-email').value = '';
+        } else {
+            showToast('Please enter a valid email address');
+        }
+    }
+
+    function openAboutModal() {
+        const modal = document.getElementById('about-modal');
+        modal.style.display = 'flex';
+        gsap.from('.about-modal-content', { 
+            scale: 0.8, 
+            opacity: 0, 
+            duration: 0.5, 
+            ease: "back.out(1.7)"
+        });
+        
+        gsap.from('.about-section-modal', {
+            opacity: 0,
+            y: 30,
+            stagger: 0.15,
+            duration: 0.6,
+            delay: 0.3,
+            ease: "power2.out"
+        });
+
+        gsap.from('.timeline-item', {
+            opacity: 0,
+            x: -30,
+            stagger: 0.1,
+            duration: 0.5,
+            delay: 0.8,
+            ease: "power2.out"
+        });
+
+        gsap.from('.stat-card', {
+            opacity: 0,
+            scale: 0.8,
+            stagger: 0.1,
+            duration: 0.5,
+            delay: 1,
+            ease: "back.out(1.7)"
+        });
+
+        document.querySelectorAll('.stat-number').forEach((stat, index) => {
+            setTimeout(() => {
+                const text = stat.textContent;
+                if (text.includes('M')) {
+                    animateNumber(stat, 0, 5, 'M+', 1000);
+                } else if (text.includes('%')) {
+                    animateNumber(stat, 0, 98, '%', 1000);
+                } else if (text === '24/7') {
+                    stat.textContent = '24/7';
+                } else {
+                    animateNumber(stat, 0, 500, '+', 1000);
+                }
+            }, 1000 + (index * 100));
+        });
+    }
+
+    function closeAboutModal() {
+        const modal = document.getElementById('about-modal');
+        gsap.to('.about-modal-content', {
+            scale: 0.8,
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => modal.style.display = 'none'
+        });
+    }
+
+    function animateNumber(element, start, end, suffix, duration) {
+        const range = end - start;
+        const increment = range / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= end) {
+                element.textContent = end + suffix;
+                clearInterval(timer);
+            } else {
+                element.textContent = Math.floor(current) + suffix;
+            }
+        }, 16);
+    }
+
+    document.addEventListener('click', (e) => {
+        const aboutModal = document.getElementById('about-modal');
+        if (e.target === aboutModal) {
+            closeAboutModal();
+        }
+    });
+
+    let isChatOpen = false;
+    const chatButton = document.getElementById('chat-button');
+    const chatWindow = document.getElementById('chat-window');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    chatButton.addEventListener('click', toggleChat);
+
+    function toggleChat() {
+    if (!isChatOpen) {
+        // OPEN
+        isChatOpen = true;
+
+        chatWindow.style.display = 'flex';
+
+        gsap.fromTo(chatWindow,
+            { scale: 0.8, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(1.7)" }
+        );
+
+        chatInput.focus();
+
+    } else {
+        // CLOSE
+        isChatOpen = false;
+
+        gsap.to(chatWindow, {
+            scale: 0.8,
+            opacity: 0,
+            duration: 0.2,
+            onComplete: () => {
+                chatWindow.style.display = 'none';
+
+                // 🔥 RESET so it works next time
+                gsap.set(chatWindow, { scale: 1, opacity: 1 });
+            }
+        });
+    }
+}
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function sendMessage() {
+        const message = chatInput.value.trim();
+        if (message === '') return;
+
+        addMessage(message, 'user');
+        chatInput.value = '';
+
+        showTyping();
+        setTimeout(() => {
+            hideTyping();
+            const response = getBotResponse(message.toLowerCase());
+            addMessage(response, 'bot');
+        }, 1500);
+    }
+
+    function sendQuickReply(message) {
+        addMessage(message, 'user');
+        showTyping();
+        setTimeout(() => {
+            hideTyping();
+            const response = getBotResponse(message.toLowerCase());
+            addMessage(response, 'bot');
+        }, 1500);
+    }
+
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        if (sender === 'bot') {
+            messageDiv.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">${text}</div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="message-content">${text}</div>
+            `;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTyping() {
+        typingIndicator.style.display = 'block';
+        chatMessages.appendChild(typingIndicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTyping() {
+        typingIndicator.style.display = 'none';
+    }
+
+function getBotResponse(message) {
+    const input = message.toLowerCase();
+    
+    const greetings = ['hello', 'hi', 'hey', 'greetings', 'hola'];
+    const emergency = ['emergency', 'urgent', 'help', 'ambulance', 'pain', 'accident'];
+    const appointment = ['book', 'appointment', 'schedule', 'meet', 'visit', 'consult'];
+    const mentalHealth = ['stressed', 'sad', 'anxious', 'depressed', 'tired', 'feeling low'];
+    const teamInfo = ['who built', 'developers', 'team', 'algorithm architect', 'members'];
+
+    if (emergency.some(word => input.includes(word))) {
+    
+        scrollToSection('map-section');
+        return "🚨 **EMERGENCY DETECTED.** I have scrolled to the Map section to show you the nearest hospitals. Please call **108** immediately if you need an ambulance.";
+    }
+
+    if (mentalHealth.some(word => input.includes(word))) {
+        return "I'm sorry you're feeling this way. ❤️ Your mental wellness is vital. Would you like me to find a **Neurologist** for a consult, or should I show you some stress-relief health tips?";
+    }
+
+    if (appointment.some(word => input.includes(word))) {
+
+    if (isPortalOpen) {
+        mainContent.style.display = 'block';
+        patientPortal.style.display = 'none';
+        doctorPortal.style.display = 'none';
+        isPortalOpen = false;
+        portalBtn.innerText = 'Portal';
+    }
+
+    setTimeout(() => {
+        scrollToSection('doctors-section');
+    }, 100);
+
+    return "I’ve taken you to our Expert Specialists section. Choose a doctor and click Book Now.";
+}
+
+    if (teamInfo.some(word => input.includes(word))) {
+        return "AuraHealth was developed by **Team Algorithm Architect**: Jitesh, Abhishek, Sahil, Janmejay, Vidushi, and Ananta. They are shaping the future of intelligent healthcare! 🚀";
+    }
+
+    if (input.includes('hospital') || input.includes('location') || input.includes('clinic') || input.includes('near')) {
+        scrollToSection('map-section');
+        return "I've opened our **Live Facility Map**. You can see hospitals in Cuttack like SCB Medical College or Sun Hospital right there! 📍";
+    }
+
+    if (input.includes('tip') || input.includes('healthy') || input.includes('advice')) {
+        return "AuraHealth AI Suggestion: 💡\n• Maintain 10k steps daily.\n• Use our Digital Rx to track meds.\n• Schedule a check-up every 6 months!";
+    }
+
+    if (greetings.some(word => input.includes(word))) {
+        return "Hello! I am the AuraHealth Intelligent Assistant. I can help you **find hospitals**, **book specialists**, or check your **Health Score**. What's on your mind?";
+    }
+    return "I'm still learning! 🧠 I noticed you mentioned '" + message + "'. You can ask me to 'Book an appointment', 'Find a hospital', or tell me how you are feeling.";
+}
+
+    const loginModal = document.getElementById('login-modal');
+    let currentUser = null;
+    let userType = null;
+    let isSignupMode = false;
+
+    function switchAuthMode(mode,e) {
+        isSignupMode = (mode === 'signup');
+        document.querySelectorAll('.auth-switch-btn').forEach(btn => btn.classList.remove('active'));
+        if (e) e.target.classList.add('active');
+        
+        if (isSignupMode) {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('signup-section').style.display = 'block';
+        } else {
+            document.getElementById('login-section').style.display = 'block';
+            document.getElementById('signup-section').style.display = 'none';
+        }
+    }
+
+    function switchTab(type) {
+        document.querySelectorAll('#login-section .login-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#login-section .login-form').forEach(form => form.classList.remove('active'));
+        
+        if (type === 'patient') {
+            document.querySelector('#login-section .login-tab:first-child').classList.add('active');
+            document.getElementById('patient-login').classList.add('active');
+        } else {
+            document.querySelector('#login-section .login-tab:last-child').classList.add('active');
+            document.getElementById('doctor-login').classList.add('active');
+        }
+    }
+
+    function switchSignupTab(type) {
+        document.querySelectorAll('#signup-section .login-tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#signup-section .login-form').forEach(form => form.classList.remove('active'));
+        
+        if (type === 'patient') {
+            document.querySelector('#signup-section .login-tab:first-child').classList.add('active');
+            document.getElementById('patient-signup').classList.add('active');
+        } else {
+            document.querySelector('#signup-section .login-tab:last-child').classList.add('active');
+            document.getElementById('doctor-signup').classList.add('active');
+        }
+    }
+
+    function closeLogin() {
+        gsap.to(loginModal, {
+            opacity: 0,
+            duration: 0.2,
+            onComplete: () => loginModal.style.display = 'none'
+        });
+    }
+
+   function loginAsPatient(e) {
+    e.preventDefault();
+
+    const nameInput = document.querySelector('#patient-login input[type="text"]').value;
+
+    currentUser = nameInput || 'Patient';
+    userType = 'patient';
+
+    // 🔥 Save to localStorage
+    localStorage.setItem('auraUser', JSON.stringify({
+        name: currentUser,
+        type: userType
+    }));
+
+    document.getElementById('user-name').textContent = currentUser;
+
+    closeLogin();
+    showToast('Login successful! Welcome back, ' + currentUser);
+    document.getElementById('logout-btn').style.display = 'block';
+    togglePortal();
+}
+
+    function loginAsDoctor(e) {
+    e.preventDefault();
+
+    const nameInput = document.querySelector('#doctor-login input[type="text"]').value;
+
+    currentUser = nameInput || 'Doctor';
+    userType = 'doctor';
+
+    document.getElementById('doctor-name').textContent = currentUser;
+
+    closeLogin();
+    showToast('Login successful! Welcome, ' + currentUser);
+    document.getElementById('logout-btn').style.display = 'block';
+    togglePortal();
+    startLiveClock();
+}
+
+    function signupAsPatient(e) {
+        e.preventDefault();
+        currentUser = 'New Patient';
+        userType = 'patient';
+        closeLogin();
+        showToast('Account created successfully! Welcome to AuraHealth!');
+        document.getElementById('logout-btn').style.display = 'block';
+        togglePortal();
+    }
+
+    function signupAsDoctor(e) {
+        e.preventDefault();
+        currentUser = 'New Doctor';
+        userType = 'doctor';
+        closeLogin();
+        showToast('Doctor account created successfully!');
+        document.getElementById('logout-btn').style.display = 'block';
+        togglePortal();
+        startLiveClock();
+    }
+
+    function logout() {
+        currentUser = null;
+        userType = null;
+        localStorage.removeItem('auraUser');
+        document.getElementById('logout-btn').style.display = 'none';
+
+        // Kill any GSAP tweens on portals and clear inline styles
+        gsap.killTweensOf(patientPortal);
+        gsap.killTweensOf(doctorPortal);
+        gsap.set(patientPortal, { clearProps: 'all' });
+        gsap.set(doctorPortal, { clearProps: 'all' });
+
+        mainContent.style.display = 'block';
+        patientPortal.style.display = 'none';
+        doctorPortal.style.display = 'none';
+        isPortalOpen = false;
+
+        portalBtn.innerText = 'Portal';
+        showToast('Logged out successfully');
+        window.scrollTo(0, 0);
+    }
+
+    function togglePortal() {
+        if (!isPortalOpen) {
+            if (!currentUser) {
+                loginModal.style.display = 'flex';
+                gsap.fromTo(loginModal, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+                return;
+            }
+
+            mainContent.style.display = 'none';
+
+            if (userType === 'patient') {
+                gsap.set(patientPortal, { clearProps: 'all' });
+                patientPortal.style.display = 'block';
+                gsap.fromTo(patientPortal, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6 });
+            } else {
+                gsap.set(doctorPortal, { clearProps: 'all' });
+                doctorPortal.style.display = 'block';
+                gsap.fromTo(doctorPortal, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6 });
+            }
+
+            portalBtn.innerText = 'Back to Home';
+        } else {
+            gsap.killTweensOf(patientPortal);
+            gsap.killTweensOf(doctorPortal);
+            gsap.set(patientPortal, { clearProps: 'all' });
+            gsap.set(doctorPortal, { clearProps: 'all' });
+            mainContent.style.display = 'block';
+            patientPortal.style.display = 'none';
+            doctorPortal.style.display = 'none';
+            portalBtn.innerText = 'Portal';
+        }
+        isPortalOpen = !isPortalOpen;
+        window.scrollTo(0, 0);
+    }
+
+    let localStream = null;
+    let micActive = true;
+    let camActive = true;
+
+    async function startVideoCall(patientName) {
+        document.getElementById('call-participant-name').textContent = patientName;
+        document.getElementById('video-modal').style.display = 'flex';
+        gsap.from('#video-modal .video-container', { scale: 0.8, opacity: 0, duration: 0.4 });
+
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const localVideo = document.getElementById('local-video');
+            localVideo.srcObject = localStream;
+            localVideo.style.display = 'block';
+            document.getElementById('video-self-placeholder').style.display = 'none';
+            micActive = true; camActive = true;
+            document.getElementById('btn-mute').textContent = '🎤';
+            document.getElementById('btn-mute').style.background = '#4CAF50';
+            document.getElementById('btn-camera').textContent = '📹';
+            document.getElementById('btn-camera').style.background = '#2196F3';
+        } catch (err) {
+            showToast('Camera/mic access denied. Check browser permissions.');
+        }
+    }
+
+    function toggleMic() {
+        if (!localStream) return;
+        micActive = !micActive;
+        localStream.getAudioTracks().forEach(t => t.enabled = micActive);
+        document.getElementById('btn-mute').textContent = micActive ? '🎤' : '🔇';
+        document.getElementById('btn-mute').style.background = micActive ? '#4CAF50' : '#f44336';
+    }
+
+    function toggleCamera() {
+        if (!localStream) return;
+        camActive = !camActive;
+        localStream.getVideoTracks().forEach(t => t.enabled = camActive);
+        document.getElementById('btn-camera').textContent = camActive ? '📹' : '🚫';
+        document.getElementById('btn-camera').style.background = camActive ? '#2196F3' : '#f44336';
+        document.getElementById('local-video').style.display = camActive ? 'block' : 'none';
+        document.getElementById('video-self-placeholder').style.display = camActive ? 'none' : 'flex';
+    }
+
+    function endCall() {
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        const lv = document.getElementById('local-video');
+        lv.srcObject = null; lv.style.display = 'none';
+        document.getElementById('video-self-placeholder').style.display = 'flex';
+        gsap.to('#video-modal', {
+            opacity: 0, duration: 0.3,
+            onComplete: () => {
+                document.getElementById('video-modal').style.display = 'none';
+                gsap.set('#video-modal', { opacity: 1 });
+            }
+        });
+        showToast('Call ended');
+    }
+    const labReports = [];
+
+    function submitLabReport(e) {
+        e.preventDefault();
+        
+        const report = {
+            patientName: document.getElementById('report-patient-name').value,
+            type: document.getElementById('report-type').value,
+            summary: document.getElementById('report-summary').value,
+            date: new Date().toLocaleDateString('en-US', {day:'2-digit',month:'short',year:'numeric'}),
+            time: new Date().toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'}),
+            doctor: currentUser
+        };
+
+        labReports.push(report);
+        updatePatientLabReports();
+        updateDoctorLabCounter();
+        showDoctorSubmittedReports();
+        showToast('Lab report submitted successfully!');
+        document.getElementById('lab-report-form').reset();
+    }
+
+    function updateDoctorLabCounter() {
+        const el = document.getElementById('doc-lab-count');
+        if (el) el.textContent = labReports.length;
+    }
+
+    function showDoctorSubmittedReports() {
+        const section = document.getElementById('doc-submitted-reports-section');
+        const container = document.getElementById('doc-submitted-reports');
+        if (!section || !container) return;
+        section.style.display = 'block';
+        container.innerHTML = labReports.map(r => `
+            <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;margin-bottom:10px;border-left:3px solid var(--success);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <div>
+                        <strong style="font-size:0.9rem;">${r.patientName}</strong>
+                        <span style="margin-left:8px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:99px;font-size:0.72rem;font-weight:700;">${r.type}</span>
+                    </div>
+                    <span style="font-size:0.75rem;color:#94a3b8;">${r.date} ${r.time}</span>
+                </div>
+                <p style="font-size:0.82rem;color:#64748b;margin-top:6px;line-height:1.5;">${r.summary}</p>
+            </div>
+        `).join('');
+    }
+
+    function updatePatientLabReports() {
+        const container = document.getElementById('patient-lab-reports');
+        if (labReports.length === 0) return;
+
+        const labCount = document.getElementById('stat-labs-count');
+        if (labCount) labCount.textContent = labReports.length;
+
+        container.innerHTML = labReports.map((report, i) => `
+            <div class="lab-report-item" style="animation:slideUp 0.3s ease ${i*0.07}s both;">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:38px;height:38px;background:linear-gradient(135deg,var(--success),var(--accent));border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.1rem;">🧪</div>
+                        <div>
+                            <h4 style="margin-bottom:3px;">${report.type}</h4>
+                            <p style="font-size:0.8rem;color:#64748b;">For: ${report.patientName}</p>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="background:var(--light);padding:4px 12px;border-radius:20px;font-size:0.78rem;font-weight:700;color:var(--success);">✓ ${report.date}</span>
+                        <div style="font-size:0.72rem;color:#94a3b8;margin-top:4px;">Submitted by ${report.doctor}</div>
+                    </div>
+                </div>
+                <p style="font-size:0.88rem;color:#475569;line-height:1.6;padding-left:48px;">${report.summary}</p>
+            </div>
+        `).join('');
+    }
+
+    const portalBtn = document.getElementById('portal-btn');
+    const mainContent = document.getElementById('main-content');
+    const patientPortal = document.getElementById('patient-portal');
+    const doctorPortal = document.getElementById('doctor-portal');
+    let isPortalOpen = false;
+
+    portalBtn.onclick = togglePortal;
+
+    const bookedAppointments = [];
+
+    const doctorNames = ["Suhani Sahoo", "Alok Ranjan", "Sahil Saha", "Manoranjan Sahoo", "Abhishek Mallick", "Jitesh Mohanty", "Aman Khan", "Rajesh Rao", "Janmejay Sahoo", "Subhrajyoti Maharana", "Ananta Shree Narayana Mohapatra", ];
+    const specialties = ["Cardiology", "Neurology", "Pediatrics", "Dermatology"];
+
+    const doctorImages = [
+        "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1638202993928-7267aad84c31?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1643297654416-05795d62e39c?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1584467735815-f778f274e296?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1609318403693-8eec49f75873?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1612531386530-97d232ae96e1?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1622902046580-2b47f47f5471?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1666214280391-8ff5bd3c0bf0?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1645378999013-95abebf5f3c1?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1598524846513-4e16ef8636ff?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1590611936760-eeb9bc598548?w=400&h=400&fit=crop",
+        "https://images.unsplash.com/photo-1651008376811-b98baee60c1f?w=400&h=400&fit=crop",
+        "https://static.vecteezy.com/system/resources/thumbnails/026/375/249/small/ai-generative-portrait-of-confident-male-doctor-in-white-coat-and-stethoscope-standing-with-arms-crossed-and-looking-at-camera-photo.jpg"
+        
+    ];
+
+    const doctorList = doctorNames.map((name, i) => ({
+        name: name,
+        spec: specialties[i % 4],
+        img: doctorImages[i % 20]
+    }));
+
+    const container = document.getElementById('doctors-container');
+
+    function renderDoctors(data) {
+        container.innerHTML = '';
+        data.forEach(doc => {
+            const card = document.createElement('div');
+            card.className = 'doctor-card';
+            card.innerHTML = `
+                <img src="${doc.img}" class="doc-img" alt="Dr. ${doc.name}">
+                <div class="doc-spec">${doc.spec}</div>
+                <div class="doc-name" style="font-weight: 700; font-size: 1.1rem; margin: 10px 0;">Dr. ${doc.name}</div>
+                <button class="btn-book-small" onclick="openModal('${doc.name}', '${doc.spec}')">Book Now</button>
+            `;
+            container.appendChild(card);
+        });
+        // Animate newly rendered cards
+        gsap.fromTo('.doctor-card', 
+            { opacity: 0, y: 30 }, 
+            { opacity: 1, y: 0, stagger: 0.07, duration: 0.5, ease: 'power2.out' }
+        );
+    }
+    renderDoctors(doctorList);
+
+
+
+
+
+const doctorFilterButtons = document.querySelectorAll(
+    '.doctors-section .filter-btn'
+);
+const searchInput = document.getElementById('doc-search');
+
+searchInput.addEventListener('input', function () {
+    const searchValue = this.value.toLowerCase().trim();
+
+    // Get active specialty filter
+    const activeFilterBtn = document.querySelector('.doctors-section .filter-btn.active');
+    const activeFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
+
+    let filteredDoctors = doctorList;
+
+    // Apply specialty filter first
+    if (activeFilter !== 'all') {
+        filteredDoctors = filteredDoctors.filter(doc => doc.spec === activeFilter);
+    }
+
+    // Apply name search filter
+    if (searchValue !== '') {
+        filteredDoctors = filteredDoctors.filter(doc =>
+            doc.name.toLowerCase().includes(searchValue)
+        );
+    }
+
+    renderDoctors(filteredDoctors);
+});
+
+doctorFilterButtons.forEach(btn => {
+    btn.addEventListener('click', function () {
+
+        doctorFilterButtons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const filterValue = this.dataset.filter;
+
+        const filteredDoctors =
+            filterValue === 'all'
+                ? doctorList
+                : doctorList.filter(d => d.spec === filterValue);
+
+        renderDoctors(filteredDoctors);
+    });
+});
+
+
+    const modal = document.getElementById('modal-overlay');
+    function openModal(name, spec) {
+        document.getElementById('modal-doc-name').innerText = `Book with Dr. ${name}`;
+        document.getElementById('modal-doc-spec').innerText = spec;
+        modal.style.display = 'flex';
+        gsap.from(".booking-modal", { scale: 0.8, opacity: 0, duration: 0.4 });
+    }
+    function closeModal() { modal.style.display = 'none'; }
+
+    function showToast(message = 'Success!') {
+        const toast = document.getElementById('booking-toast');
+        document.getElementById('toast-message').textContent = message;
+        toast.style.display = 'flex';
+        gsap.fromTo(toast, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 });
+        setTimeout(() => {
+            gsap.to(toast, { opacity: 0, y: 20, duration: 0.4, onComplete: () => toast.style.display = 'none' });
+        }, 3000);
+    }
+
+    function renderPortalAppointments(filter) {
+        filter = filter || 'all';
+        const list = document.getElementById('portal-appointment-list');
+        if (bookedAppointments.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;"><div style="font-size:3rem;margin-bottom:10px;">📋</div><p>No appointments booked yet.</p><p style="font-size:0.85rem;margin-top:5px;">Visit the Doctors section to schedule one.</p></div>';
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        const filtered = bookedAppointments.filter(a => {
+            if (filter === 'upcoming') return a.date >= today;
+            if (filter === 'past') return a.date < today;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;"><p>No ' + filter + ' appointments.</p></div>';
+            return;
+        }
+
+        list.innerHTML = filtered.map((appt, i) => `
+            <div class="appt-item" style="animation:slideUp 0.3s ease ${i * 0.07}s both;">
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:46px;height:46px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.3rem;flex-shrink:0;">🩺</div>
+                    <div>
+                        <h4 style="margin-bottom:4px;">Dr. ${appt.doctor}</h4>
+                        <span style="color:var(--primary);font-size:0.8rem;font-weight:700;">${appt.spec}</span>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-weight:800;font-size:0.95rem;">${appt.date}</div>
+                    <div style="font-size:0.8rem;color:#64748b;margin-top:2px;">${appt.slot}</div>
+                    <div style="font-size:0.78rem;color:var(--success);font-weight:700;margin-top:4px;">● Confirmed</div>
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById('stat-appt-count').textContent = bookedAppointments.length;
+    }
+
+    function filterAppts(btn, filter) {
+        document.querySelectorAll('#patient-portal .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderPortalAppointments(filter);
+    }
+
+    function startLiveClock() {
+        const el = document.getElementById('live-clock');
+        if (!el) return;
+        function tick() {
+            const now = new Date();
+            el.textContent = now.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        }
+        tick();
+        setInterval(tick, 1000);
+    }
+
+    document.getElementById('booking-form').onsubmit = (e) => {
+        e.preventDefault();
+        
+        const appt = {
+            doctor: document.getElementById('modal-doc-name').innerText.replace("Book with Dr. ", ""),
+            spec: document.getElementById('modal-doc-spec').innerText,
+            date: document.getElementById('booking-date').value,
+            slot: document.getElementById('booking-slot').value
+        };
+
+        bookedAppointments.push(appt);
+        renderPortalAppointments('all');
+        showToast('Appointment booked successfully!');
+        closeModal();
+        document.getElementById('booking-form').reset();
+    };
+    function goToDoctorSelection() {
+    // Close portal view
+    patientPortal.style.display = 'none';
+    doctorPortal.style.display = 'none';
+    mainContent.style.display = 'block';
+
+    isPortalOpen = false;
+    portalBtn.innerText = 'Portal';
+
+    // Scroll to doctors section
+    setTimeout(() => {
+        scrollToSection('doctors-section');
+    }, 100);
+}
+
+let map;
+let markers = [];
+let userMarker;
+let currentFilter = 'all';
+
+const facilities = [
+    { name: "SCB Medical College & Hospital", type: "hospital", lat: 20.4815, lng: 85.8675, distance: "0.8 km" },
+    { name: "Shanti Memorial Hospital", type: "hospital", lat: 20.4735, lng: 85.8752, distance: "1.2 km" },
+    { name: "Sun Hospital", type: "hospital", lat: 20.4578, lng: 85.8612, distance: "2.5 km" },
+    { name: "City General Hospital", type: "hospital", lat: 20.4625, lng: 85.8830, distance: "2.3 km" },
+    { name: "Ashwini Hospital", type: "hospital", lat: 20.4920, lng: 85.9125, distance: "4.1 km" },
+    { name: "MediCare Plus Clinic", type: "clinic", lat: 20.4700, lng: 85.8900, distance: "3.1 km" },
+    { name: "HealthLine Clinic", type: "clinic", lat: 20.4550, lng: 85.8750, distance: "1.9 km" },
+    { name: "QuickCare Urgent Center", type: "clinic", lat: 20.4650, lng: 85.8600, distance: "1.5 km" }
+];
+
+function initMap() {
+    map = L.map('map-container').setView([20.4625, 85.8830], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    renderFacilities();
+}
+
+function renderFacilities() {
+
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+    const listContainer = document.getElementById('facility-list');
+    listContainer.innerHTML = '';
+
+    const filtered = facilities.filter(f => currentFilter === 'all' || f.type === currentFilter);
+
+    filtered.forEach((f, index) => {
+        // 1. Add Marker to Map
+        const marker = L.marker([f.lat, f.lng]).addTo(map)
+            .bindPopup(`
+                <div class="facility-popup">
+                    <h4 style="margin:0; color:#2D6ADE;">${f.name}</h4>
+                    <p style="margin:5px 0; font-size:12px; color:#64748b;">${f.type.toUpperCase()}</p>
+                    <div style="display:flex; gap:5px; margin-top:10px;">
+                        <button class="btn-nav" style="padding:5px; font-size:10px; flex:1;" onclick="openModal('${f.name}', 'General')">Book</button>
+                        <button class="btn-nav" style="padding:5px; font-size:10px; flex:1; background:#0F172A;" onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}')">Directions</button>
+                    </div>
+                </div>
+            `);
+        markers.push(marker);
+
+        // 2. Add Item to Sidebar
+        listContainer.innerHTML += `
+            <div class="facility-card" onclick="focusFacility(${index}, ${f.lat}, ${f.lng})">
+                <div class="facility-type">${f.type}</div>
+                <h4 style="margin:5px 0;">${f.name}</h4>
+                <div class="distance">📍 ${f.distance} away</div>
+            </div>
+        `;
+    });
+}
+function focusFacility(markerIndex, lat, lng) {
+    map.setView([lat, lng], 16);
+    markers[markerIndex].openPopup();
+    // Smooth scroll back to map on mobile
+    if(window.innerWidth < 768) {
+        document.getElementById('map-container').scrollIntoView({behavior: 'smooth'});
+    }
+}
+
+function filterFacilities(type, e) {
+    currentFilter = type;
+
+    document.querySelectorAll('.map-btn')
+        .forEach(btn => btn.classList.remove('active-map'));
+
+    if (e) e.target.classList.add('active-map');
+
+    renderFacilities();
+}
+window.addEventListener('DOMContentLoaded', () => {
+    const savedUser = localStorage.getItem('auraUser');
+
+    if (savedUser) {
+        const userData = JSON.parse(savedUser);
+
+        currentUser = userData.name;
+        userType = userData.type;
+
+        document.getElementById('logout-btn').style.display = 'block';
+
+        if (userType === 'patient') {
+            document.getElementById('user-name').textContent = currentUser;
+        } else {
+            document.getElementById('doctor-name').textContent = currentUser;
+        }
+    }
+});
+
+
+
+    window.addEventListener('load', initMap);
+</script>
+
+</body>
+</html>
